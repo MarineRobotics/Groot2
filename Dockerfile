@@ -15,10 +15,13 @@ RUN apt-get update && apt-get install -y \
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
-# Download and extract AppImage (cached unless URL changes)
+ARG GROOT_VERSION=1.7.1
+ARG GROOT_ARCH=aarch64
+
+# Download and extract AppImage (cached unless version changes)
 WORKDIR /opt
 RUN curl -L -o Groot2.AppImage \
-    "https://pub-32cef6782a9e411e82222dee82af193e.r2.dev/Groot2-v1.7.1-aarch64.AppImage" \
+    "https://pub-32cef6782a9e411e82222dee82af193e.r2.dev/Groot2-v${GROOT_VERSION}-${GROOT_ARCH}.AppImage" \
     && chmod +x Groot2.AppImage \
     && ./Groot2.AppImage --appimage-extract \
     && mv squashfs-root groot2 \

@@ -1,6 +1,10 @@
 services:
   groot2:
-    build: .
+    build:
+      context: .
+      args:
+        GROOT_VERSION: 1.7.1
+        GROOT_ARCH: aarch64
     image: mrobotics/groot2:v1.7.1
     container_name: groot2
     environment:
