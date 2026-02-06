@@ -1,0 +1,20 @@
+services:
+  groot2:
+    build: .
+    image: mrobotics/groot2:v1.7.1
+    container_name: groot2
+    environment:
+      - DISPLAY=host.docker.internal:0
+    volumes:
+      # Persist any Groot2 configuration/data
+      - groot2-data:/root
+    # Expose ports Groot2 needs (adjust as needed)
+    ports:
+      - "1667:1667"   # BehaviorTree.CPP default ZMQ port
+      - "1668:1668"   # Additional port if needed
+    # For interactive use
+    stdin_open: true
+    tty: true
+
+volumes:
+  groot2-data:
