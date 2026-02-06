@@ -127,6 +127,23 @@ https://pub-32cef6782a9e411e82222dee82af193e.r2.dev/Groot2-v1.7.1-aarch64.AppIma
 3. Update the version tag in docker-compose.yml
 4. Rebuild and push
 
+### Automated Builds (GitHub Actions)
+
+A GitHub Actions workflow (`.github/workflows/build-and-push.yml`) automatically checks for new Groot2 versions daily. It works by:
+
+1. Scraping the changelog from the [BehaviorTree/Groot2](https://github.com/BehaviorTree/Groot2) GitHub README to detect the latest version
+2. Checking Docker Hub to see if that version tag already exists
+3. If it's a new version, building the image and pushing both `v{version}` and `latest` tags
+
+The workflow can also be triggered manually from the Actions tab with a specific version number.
+
+**Required setup:** A Docker Hub access token must be stored as a GitHub repository secret:
+1. Create an access token at https://hub.docker.com/settings/security
+2. Go to the repo's Settings > Secrets and variables > Actions
+3. Add a secret named `DOCKERHUB_TOKEN` with the token value
+
+The workflow runs on an ARM runner (`ubuntu-24.04-arm`) since the AppImage is aarch64.
+
 ### Source Files
 
 The Dockerfile and docker-compose.yml are stored in: `/Users/vince/software/docker/groot2/`
