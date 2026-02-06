@@ -1,0 +1,84 @@
+name: Check for new Groot2 version and build
+
+on:
+  schedule:
+    # Check daily at 8am UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Groot2 version to build (e.g. 1.8.1). Leave empty to auto-detect latest.'
+        required: false
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect latest Groot2 version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Using manually specified version: $VERSION"
+          else
+            VERSION=$(curl -s "https://api.github.com/repos/BehaviorTree/Groot2/contents/README.md" \
+              | python3 -c "
+          import json, sys, base64, re
+          data = json.load(sys.stdin)
+          content = base64.b64decode(data['content']).decode()
+          versions = re.findall(r'### (\d+\.\d+\.\d+)', content)
+          print(versions[0])
+          ")
+            echo "Detected latest version: $VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists on Docker Hub
+        id: check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/mrobotics/groot2/tags/v${{ steps.version.outputs.version }}")
+          if [ "$STATUS" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping build."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Tag v${{ steps.version.outputs.version }} not found, will build."
+          fi
+
+      - name: Log in to Docker Hub
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          username: mrobotics
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          docker build \
+            --build-arg GROOT_VERSION=${{ steps.version.outputs.version }} \
+            --build-arg GROOT_ARCH=aarch64 \
+            -t mrobotics/groot2:v${{ steps.version.outputs.version }} \
+            -t mrobotics/groot2:latest \
+            .
+
+      - name: Push to Docker Hub
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          docker push mrobotics/groot2:v${{ steps.version.outputs.version }}
+          docker push mrobotics/groot2:latest
+
+      - name: Summary
+        run: |
+          echo "### Groot2 Docker Build" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check.outputs.exists }}" = "true" ]; then
+            echo "- **Status:** Already exists, skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status:** Built and pushed" >> $GITHUB_STEP_SUMMARY
+          fi
