@@ -70,27 +70,9 @@ volumes:
   groot2-data:
 ```
 
-## Tags
-
-- `v1.8.1` - Groot2 v1.8.1 (aarch64)
-- `v1.7.1` - Groot2 v1.7.1 (aarch64)
-- `latest` - Latest version
-
 ## Notes
 
 - This image is built for **aarch64** (ARM64) architecture
 - Based on Ubuntu 24.04
 - Network mode `host` does not work on macOS; use port mapping instead
-
-## Automated Builds
-
-A GitHub Actions workflow checks daily for new Groot2 versions by scraping the [BehaviorTree/Groot2](https://github.com/BehaviorTree/Groot2) changelog. When a new version is detected, it automatically builds and pushes to Docker Hub.
-
-It can also be triggered manually from the Actions tab with a specific version number.
-
-### Setup
-
-A Docker Hub access token is required as a repository secret:
-1. Create an access token at https://hub.docker.com/settings/security
-2. Go to repo Settings > Secrets and variables > Actions
-3. Add a secret named `DOCKERHUB_TOKEN`
+- New versions are automatically built and pushed when detected

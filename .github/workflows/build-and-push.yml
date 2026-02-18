@@ -25,7 +25,9 @@ jobs:
             VERSION="${{ github.event.inputs.version }}"
             echo "Using manually specified version: $VERSION"
           else
-            VERSION=$(curl -s "https://api.github.com/repos/BehaviorTree/Groot2/contents/README.md" \
+            CDN="https://pub-32cef6782a9e411e82222dee82af193e.r2.dev"
+            # Start from the latest known version in the README, then probe upward
+            LATEST=$(curl -s "https://api.github.com/repos/BehaviorTree/Groot2/contents/README.md" \
               | python3 -c "
           import json, sys, base64, re
           data = json.load(sys.stdin)
@@ -33,6 +35,48 @@ jobs:
           versions = re.findall(r'### (\d+\.\d+\.\d+)', content)
           print(versions[0])
           ")
+            echo "Latest version from README: $LATEST"
+
+            # Probe the CDN for newer minor/patch versions beyond what the README lists
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST"
+            FOUND="$LATEST"
+
+            # Check higher minor versions (e.g. 1.9.0, 1.10.0, ...)
+            m=$((MINOR + 1))
+            while true; do
+              CANDIDATE="${MAJOR}.${m}.0"
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${CDN}/Groot2-v${CANDIDATE}-aarch64.AppImage")
+              if [ "$STATUS" != "200" ]; then
+                break
+              fi
+              FOUND="$CANDIDATE"
+              # Also check patch versions for this minor (e.g. 1.9.1, 1.9.2, ...)
+              p=1
+              while true; do
+                PATCH_CANDIDATE="${MAJOR}.${m}.${p}"
+                STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${CDN}/Groot2-v${PATCH_CANDIDATE}-aarch64.AppImage")
+                if [ "$STATUS" != "200" ]; then
+                  break
+                fi
+                FOUND="$PATCH_CANDIDATE"
+                p=$((p + 1))
+              done
+              m=$((m + 1))
+            done
+
+            # Also check higher patch versions of the README's minor version
+            p=$((PATCH + 1))
+            while true; do
+              CANDIDATE="${MAJOR}.${MINOR}.${p}"
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${CDN}/Groot2-v${CANDIDATE}-aarch64.AppImage")
+              if [ "$STATUS" != "200" ]; then
+                break
+              fi
+              FOUND="$CANDIDATE"
+              p=$((p + 1))
+            done
+
+            VERSION="$FOUND"
             echo "Detected latest version: $VERSION"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
